@@ -2,8 +2,10 @@ import numpy as np
 import random
 import dataclasses
 from matplotlib import pyplot as plt
-#increase font size
-plt.rcParams.update({'font.size': 22})
+
+# increase font size
+plt.rcParams.update({"font.size": 22})
+
 
 @dataclasses.dataclass
 class Sun:
@@ -44,7 +46,7 @@ def make_experiment(stationary):
 
 
 def get_second_coherence_function():
-    experiments = [make_experiment(500) for i in range(10 ** 5)]
+    experiments = [make_experiment(500) for i in range(10**5)]
     return (
         np.mean([experiment.intensity_product for experiment in experiments], axis=0)
         / np.mean([experiment.stationary_intensity for experiment in experiments]) ** 2
@@ -52,6 +54,29 @@ def get_second_coherence_function():
 
 
 def main():
+    plot_sun_fields()
+
+
+def plot_sun_fields():
+    suns = [get_field() for i in range(3)]
+    for i, sun in enumerate(suns):
+        plt.plot(sun.intensity, label=f"Sun {i+1}")
+
+    plt.xlabel("Cell number")
+    plt.ylabel("Intensity")
+    plt.legend()
+    plt.show()
+
+
+def plot_average_sun_field():
+    suns = [get_field() for i in range(10**5)]
+    plt.plot(np.mean([sun.intensity for sun in suns], axis=0))
+    plt.xlabel("Cell number")
+    plt.ylabel("Intensity")
+    plt.show()
+
+
+def plot_numeric_second_coherence():
     second_coherence = get_second_coherence_function()
     plt.plot(np.array(range(1024)) - 500, np.abs(second_coherence))
     plt.axvline(x=-20, color="black", linestyle="--")
