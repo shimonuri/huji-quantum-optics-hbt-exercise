@@ -2,7 +2,8 @@ import numpy as np
 import random
 import dataclasses
 from matplotlib import pyplot as plt
-
+#increase font size
+plt.rcParams.update({'font.size': 22})
 
 @dataclasses.dataclass
 class Sun:
@@ -51,9 +52,12 @@ def get_second_coherence_function():
 
 
 def main():
-    plt.plot(np.array(range(1024)) - 500, np.abs(get_second_coherence_function()))
+    second_coherence = get_second_coherence_function()
+    plt.plot(np.array(range(1024)) - 500, np.abs(second_coherence))
     plt.axvline(x=-20, color="black", linestyle="--")
     plt.axvline(x=21, color="black", linestyle="--")
+    plt.xlabel("Distance from the stationary point (sun center)")
+    plt.ylabel("Second order coherence function")
     plt.show()
 
 
