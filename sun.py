@@ -47,10 +47,10 @@ def make_experiment(stationary, total_size, sun_size):
     )
 
 
-def get_second_coherence_function(total_size, sun_size):
+def get_second_coherence_function(total_size, sun_size, number_of_steps=10**5)
     experiments = [
         make_experiment(500, total_size=total_size, sun_size=sun_size)
-        for _ in range(10**5)
+        for _ in range(number_of_steps)
     ]
     return (
         np.mean([experiment.intensity_product for experiment in experiments], axis=0)
@@ -108,7 +108,7 @@ def plot_numeric_second_coherence():
     x_points = np.array(range(1024)) - 500
 
     def fit(x, t_c):
-        return 1 + np.exp(-(2 * np.abs(x)) / t_c)
+        return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * np.abs(x)) / t_c)
 
     result = curve_fit(fit, x_points, np.abs(second_coherence))
 
@@ -135,10 +135,13 @@ def plot_intensity_histogram():
 
 
 def find_fwhm():
+    sun_size_to_second_coherence = {}
     for sun_size in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
-        second_coherence = get_second_coherence_function(
-            total_size=1024, sun_size=sun_size
+        sun_size_to_second_coherence[sun_size] = get_second_coherence_function(
+            total_size=1024, sun_size=sun_size, number_of_steps=10
         )
+
+    for sun_size, second_coherence in sun_size_to_second_coherence.items():
         x_points = np.array(range(1024)) - 500
         plt.plot(
             x_points,
@@ -158,7 +161,7 @@ def plot_fwhm_from_file():
 
 
 def main():
-    plot_numeric_second_coherence()
+    find_fwhm()
 
 
 if __name__ == "__main__":
