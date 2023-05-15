@@ -156,12 +156,6 @@ def plot_intensity_histogram():
         bins=20,
         density=True,
     )
-    # make curve fit to histogram
-    # histogram = np.histogram(
-    #     list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
-    #     bins=20,
-    #     density=True,
-    # )
 
     def fit(x, I_max, I):
         return I_max * np.exp(-(x / I))
@@ -175,7 +169,7 @@ def plot_intensity_histogram():
     )
     plt.legend()
     plt.xlabel("Intensity")
-    plt.ylabel("Count")
+    plt.ylabel("Probability density")
     plt.show()
 
 
