@@ -150,26 +150,25 @@ def plot_smeared_second_coherence():
 
 
 def plot_intensity_histogram():
-    suns = [get_field(1024, 40) for _ in range(10**4)]
+    suns = [get_field(1024, 40) for _ in range(10**3)]
     histogram = plt.hist(
         list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
         bins=20,
-        density=True,
     )
 
-    def fit(x, I_max, I):
-        return I_max * np.exp(-(x / I))
+    def fit(x, P_0, I_0):
+        return P_0 * np.exp(-(x / I_0))
 
     result = curve_fit(fit, histogram[1][:-1], histogram[0])
 
     plt.plot(
         histogram[1][:-1],
         [fit(x, result[0][0], result[0][1]) for x in histogram[1][:-1]],
-        label=rf"Fit, $I$ = {result[0][1]:.2f}",
+        label=rf"Fit $I_0$ = {result[0][1]:.2f}",
     )
     plt.legend()
     plt.xlabel("Intensity")
-    plt.ylabel("Probability density")
+    plt.ylabel("Number of cells")
     plt.show()
 
 
