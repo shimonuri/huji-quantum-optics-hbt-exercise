@@ -149,8 +149,8 @@ def plot_smeared_second_coherence():
     plt.show()
 
 
-def plot_intensity_histogram():
-    suns = [get_field(1024, 40) for _ in range(10**4)]
+def plot_intensity_histogram(number_of_fields=10 ** 4):
+    suns = [get_field(1024, 40) for _ in range(number_of_fields)]
     histogram = plt.hist(
         list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
         bins=20,
