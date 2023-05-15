@@ -193,7 +193,7 @@ def find_fwhm():
 
 
 def plot_fwhm_from_file():
-    csv = pandas.read_csv("fwhm.csv")
+    csv = pandas.read_csv("data/fwhm.csv")
     plt.plot(csv["size"], csv["FWHM"])
     plt.xlabel("Sun size")
     plt.ylabel("FWHM")
