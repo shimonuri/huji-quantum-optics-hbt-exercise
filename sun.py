@@ -1,5 +1,6 @@
-import numpy as np
 import random
+import itertools
+import numpy as np
 import dataclasses
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
@@ -39,11 +40,13 @@ def get_field(total_size, sun_size):
     return Sun(vector=sun_data, field=fft_sun_data)
 
 
-def make_experiment(stationary, total_size, sun_size):
-    field = get_field(total_size, sun_size)
+def make_experiment(stationary, total_size, sun_size, average=1):
+    field_intensity = np.mean(
+        [get_field(total_size, sun_size).intensity for _ in range(average)], axis=0
+    )
     return Experiment(
-        intensity_product=field.intensity * field.intensity[stationary],
-        stationary_intensity=field.intensity[stationary],
+        intensity_product=field_intensity * field_intensity[stationary],
+        stationary_intensity=field_intensity[stationary],
     )
 
 
@@ -51,58 +54,19 @@ def get_second_coherence_function(
     total_size, sun_size, number_of_steps=10**5, is_smeared=False
 ):
     experiments = [
-        make_experiment(500, total_size=total_size, sun_size=sun_size)
+        make_experiment(
+            500,
+            total_size=total_size,
+            sun_size=sun_size,
+            average=1 if not is_smeared else 10,
+        )
         for _ in range(number_of_steps)
     ]
-    if is_smeared:
-        averaged_10_experiments = []
-        for i in range(0, len(experiments), 10):
-            averaged_10_experiments.append(
-                Experiment(
-                    intensity_product=np.mean(
-                        [
-                            experiment.intensity_product
-                            for experiment in experiments[i : i + 10]
-                        ],
-                        axis=0,
-                    ),
-                    stationary_intensity=float(
-                        np.mean(
-                            [
-                                experiment.stationary_intensity
-                                for experiment in experiments[i : i + 10]
-                            ],
-                            axis=0,
-                        ),
-                    ),
-                )
-            )
 
-        return (
-            np.mean(
-                [
-                    experiment.intensity_product
-                    for experiment in averaged_10_experiments
-                ],
-                axis=0,
-            )
-            / np.mean(
-                [
-                    experiment.stationary_intensity
-                    for experiment in averaged_10_experiments
-                ]
-            )
-            ** 2
-        )
-
-    else:
-        return (
-            np.mean(
-                [experiment.intensity_product for experiment in experiments], axis=0
-            )
-            / np.mean([experiment.stationary_intensity for experiment in experiments])
-            ** 2
-        )
+    return (
+        np.mean([experiment.intensity_product for experiment in experiments], axis=0)
+        / np.mean([experiment.stationary_intensity for experiment in experiments]) ** 2
+    )
 
 
 def plot_sun_fields():
@@ -179,29 +143,42 @@ def plot_smeared_second_coherence():
     )
     x_points = np.array(range(1024)) - 500
 
-    def fit(x, t_c):
-        return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * np.abs(x)) / t_c)
-
-    result = curve_fit(fit, x_points, np.abs(second_coherence))
     plt.plot(x_points, np.abs(second_coherence))
-    plt.plot(
-        x_points,
-        [fit(x, result[0][0]) for x in x_points],
-        label=rf"Fit, $\tau_c$ = {result[0][0]:.2f}",
-    )
-    # plt.axvline(x_points=-20, color="black", linestyle="--")
-    # plt.axvline(x_points=21, color="black", linestyle="--")
     plt.xlabel("Distance from the stationary point (sun center)")
     plt.ylabel("Second order coherence function")
-    plt.legend()
     plt.show()
 
 
 def plot_intensity_histogram():
-    suns = [get_field(1024, 40) for _ in range(10000)]
-    plt.hist([sun.intensity for sun in suns])
+    suns = [get_field(1024, 40) for _ in range(10**3)]
+    plt.hist(
+        list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
+        bins=20,
+    )
+    # make curve fit to histogram
+    histogram = np.histogram(
+        list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
+        bins=20,
+    )
+
+    def fit(x, I_max, I):
+        return I_max * np.exp(-(x / I))
+
+    x_points = histogram[1][:-1]
+    y_points = histogram[0]
+    result = curve_fit(
+        fit,
+        x_points,
+        y_points,
+    )
+    plt.plot(
+        x_points,
+        fit(x_points, result[0][0], result[0][1]),
+        label=rf"Fit, $I$ = {result[0][1]:.2f}, $I_m$ = {result[0][0]:.2f} ($I_me^{{-x/I}}$)",
+    )
+    plt.legend()
     plt.xlabel("Intensity")
-    plt.ylabel("Frequency")
+    plt.ylabel("Count")
     plt.show()
 
 
@@ -234,8 +211,7 @@ def plot_fwhm_from_file():
 
 
 def main():
-    plot_numeric_second_coherence()
-    plot_smeared_second_coherence()
+    plot_intensity_histogram()
 
 
 if __name__ == "__main__":
