@@ -150,31 +150,28 @@ def plot_smeared_second_coherence():
 
 
 def plot_intensity_histogram():
-    suns = [get_field(1024, 40) for _ in range(10**3)]
-    plt.hist(
+    suns = [get_field(1024, 40) for _ in range(10**4)]
+    histogram = plt.hist(
         list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
         bins=20,
+        density=True,
     )
     # make curve fit to histogram
-    histogram = np.histogram(
-        list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
-        bins=20,
-    )
+    # histogram = np.histogram(
+    #     list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
+    #     bins=20,
+    #     density=True,
+    # )
 
     def fit(x, I_max, I):
         return I_max * np.exp(-(x / I))
 
-    x_points = histogram[1][:-1]
-    y_points = histogram[0]
-    result = curve_fit(
-        fit,
-        x_points,
-        y_points,
-    )
+    result = curve_fit(fit, histogram[1][:-1], histogram[0])
+
     plt.plot(
-        x_points,
-        fit(x_points, result[0][0], result[0][1]),
-        label=rf"Fit, $I$ = {result[0][1]:.2f}, $I_m$ = {result[0][0]:.2f} ($I_me^{{-x/I}}$)",
+        histogram[1][:-1],
+        [fit(x, result[0][0], result[0][1]) for x in histogram[1][:-1]],
+        label=rf"Fit, $I$ = {result[0][1]:.2f}",
     )
     plt.legend()
     plt.xlabel("Intensity")
