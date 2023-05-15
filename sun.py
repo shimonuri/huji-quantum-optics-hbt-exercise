@@ -47,15 +47,62 @@ def make_experiment(stationary, total_size, sun_size):
     )
 
 
-def get_second_coherence_function(total_size, sun_size, number_of_steps=10**5)
+def get_second_coherence_function(
+    total_size, sun_size, number_of_steps=10**5, is_smeared=False
+):
     experiments = [
         make_experiment(500, total_size=total_size, sun_size=sun_size)
         for _ in range(number_of_steps)
     ]
-    return (
-        np.mean([experiment.intensity_product for experiment in experiments], axis=0)
-        / np.mean([experiment.stationary_intensity for experiment in experiments]) ** 2
-    )
+    if is_smeared:
+        averaged_10_experiments = []
+        for i in range(0, len(experiments), 10):
+            averaged_10_experiments.append(
+                Experiment(
+                    intensity_product=np.mean(
+                        [
+                            experiment.intensity_product
+                            for experiment in experiments[i : i + 10]
+                        ],
+                        axis=0,
+                    ),
+                    stationary_intensity=float(
+                        np.mean(
+                            [
+                                experiment.stationary_intensity
+                                for experiment in experiments[i : i + 10]
+                            ],
+                            axis=0,
+                        ),
+                    ),
+                )
+            )
+
+        return (
+            np.mean(
+                [
+                    experiment.intensity_product
+                    for experiment in averaged_10_experiments
+                ],
+                axis=0,
+            )
+            / np.mean(
+                [
+                    experiment.stationary_intensity
+                    for experiment in averaged_10_experiments
+                ]
+            )
+            ** 2
+        )
+
+    else:
+        return (
+            np.mean(
+                [experiment.intensity_product for experiment in experiments], axis=0
+            )
+            / np.mean([experiment.stationary_intensity for experiment in experiments])
+            ** 2
+        )
 
 
 def plot_sun_fields():
@@ -126,6 +173,30 @@ def plot_numeric_second_coherence():
     plt.show()
 
 
+def plot_smeared_second_coherence():
+    second_coherence = get_second_coherence_function(
+        total_size=1024, sun_size=40, is_smeared=True
+    )
+    x_points = np.array(range(1024)) - 500
+
+    def fit(x, t_c):
+        return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * np.abs(x)) / t_c)
+
+    result = curve_fit(fit, x_points, np.abs(second_coherence))
+    plt.plot(x_points, np.abs(second_coherence))
+    plt.plot(
+        x_points,
+        [fit(x, result[0][0]) for x in x_points],
+        label=rf"Fit, $\tau_c$ = {result[0][0]:.2f}",
+    )
+    # plt.axvline(x_points=-20, color="black", linestyle="--")
+    # plt.axvline(x_points=21, color="black", linestyle="--")
+    plt.xlabel("Distance from the stationary point (sun center)")
+    plt.ylabel("Second order coherence function")
+    plt.legend()
+    plt.show()
+
+
 def plot_intensity_histogram():
     suns = [get_field(1024, 40) for _ in range(10000)]
     plt.hist([sun.intensity for sun in suns])
@@ -138,7 +209,7 @@ def find_fwhm():
     sun_size_to_second_coherence = {}
     for sun_size in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
         sun_size_to_second_coherence[sun_size] = get_second_coherence_function(
-            total_size=1024, sun_size=sun_size, number_of_steps=10
+            total_size=1024, sun_size=sun_size
         )
 
     for sun_size, second_coherence in sun_size_to_second_coherence.items():
@@ -147,7 +218,9 @@ def find_fwhm():
             x_points,
             second_coherence,
         )
-        plt.axhline(y=0.5 * np.max(abs(second_coherence)))
+        plt.axhline(
+            y=0.5 * np.max(abs(second_coherence)), color="black", linestyle="--"
+        )
         plt.title(f"Sun size = {sun_size}")
         plt.show()
 
@@ -161,7 +234,8 @@ def plot_fwhm_from_file():
 
 
 def main():
-    find_fwhm()
+    plot_numeric_second_coherence()
+    plot_smeared_second_coherence()
 
 
 if __name__ == "__main__":
