@@ -1,5 +1,7 @@
 import random
 import itertools
+import enum
+
 import numpy as np
 import dataclasses
 from matplotlib import pyplot as plt
@@ -8,6 +10,11 @@ import pandas
 
 # increase font size
 plt.rcParams.update({"font.size": 22})
+
+
+class ExperimentType(enum.Enum):
+    CHAOTIC = enum.auto()
+    DOPPLER = enum.auto()
 
 
 @dataclasses.dataclass
@@ -26,23 +33,38 @@ class Experiment:
     stationary_intensity: float
 
 
-def initialize_sun_data(total_size, sun_size, sun_center=500):
+def initialize_sun_data(
+    total_size, sun_size, sun_center=500, experiment_type=ExperimentType.CHAOTIC
+):
     sun_data = [0] * total_size
     for i in range(sun_center - sun_size // 2, sun_center + sun_size // 2 + 1):
-        sun_data[i] = np.exp(random.random() * 2 * np.pi * 1j)
+        if experiment_type == ExperimentType.CHAOTIC:
+            sun_data[i] = np.exp(random.random() * 2 * np.pi * 1j)
+        else:
+            sun_data[i] = np.exp(
+                -(1 / 2) * (((i - sun_center) / (sun_size // 2)) ** 2)
+            ) * np.exp(random.random() * 2 * np.pi * 1j)
 
     return np.array(sun_data)
 
 
-def get_field(total_size, sun_size):
-    sun_data = initialize_sun_data(total_size, sun_size)
+def get_field(total_size, sun_size, experiment_type=ExperimentType.CHAOTIC):
+    sun_data = initialize_sun_data(
+        total_size, sun_size, experiment_type=experiment_type
+    )
     fft_sun_data = np.fft.fft(sun_data)
     return Sun(vector=sun_data, field=fft_sun_data)
 
 
-def make_experiment(stationary, total_size, sun_size, average=1):
+def make_experiment(
+    stationary, total_size, sun_size, average=1, experiment_type=ExperimentType.CHAOTIC
+):
     field_intensity = np.mean(
-        [get_field(total_size, sun_size).intensity for _ in range(average)], axis=0
+        [
+            get_field(total_size, sun_size, experiment_type).intensity
+            for _ in range(average)
+        ],
+        axis=0,
     )
     return Experiment(
         intensity_product=field_intensity * field_intensity[stationary],
@@ -69,8 +91,26 @@ def get_second_coherence_function(
     )
 
 
-def plot_sun_fields():
-    suns = [get_field(1024, 40) for i in range(2)]
+def get_doppler_coherence_function(total_size, sun_size, number_of_steps=10**5):
+    experiments = [
+        make_experiment(
+            500,
+            total_size=total_size,
+            sun_size=sun_size,
+            average=1,
+            experiment_type=ExperimentType.DOPPLER,
+        )
+        for _ in range(number_of_steps)
+    ]
+
+    return (
+        np.mean([experiment.intensity_product for experiment in experiments], axis=0)
+        / np.mean([experiment.stationary_intensity for experiment in experiments]) ** 2
+    )
+
+
+def plot_sun_fields(experiment_type=ExperimentType.CHAOTIC):
+    suns = [get_field(1024, 40, experiment_type) for i in range(2)]
     for i, sun in enumerate(suns):
         plt.plot(sun.intensity, label=f"Sun {i+1}")
 
@@ -80,7 +120,7 @@ def plot_sun_fields():
     plt.show()
 
     ax = plt.axes(projection="3d")
-    # inprove spacing between text and numbers
+    # improve spacing between text and numbers
     ax.xaxis.labelpad = 25
     ax.yaxis.labelpad = 25
     ax.zaxis.labelpad = 25
@@ -114,12 +154,25 @@ def plot_average_sun_field():
     plt.show()
 
 
-def plot_numeric_second_coherence():
-    second_coherence = get_second_coherence_function(total_size=1024, sun_size=40)
-    x_points = np.array(range(1024)) - 500
+def plot_numeric_second_coherence(experiment_type=ExperimentType.CHAOTIC):
+    if experiment_type == ExperimentType.CHAOTIC:
+        second_coherence = get_second_coherence_function(total_size=1024, sun_size=40)
 
-    def fit(x, t_c):
-        return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * np.abs(x)) / t_c)
+        def fit(x, t_c):
+            return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * np.abs(x)) / t_c)
+
+    elif experiment_type == ExperimentType.DOPPLER:
+        second_coherence = get_doppler_coherence_function(
+            total_size=1024, sun_size=40, number_of_steps=10**6
+        )
+
+        def fit(x, t_c):
+            return (np.max(abs(second_coherence)) - 1) + np.exp(-(2 * (x / t_c) ** 2))
+
+    else:
+        raise ValueError("Invalid experiment type")
+
+    x_points = np.array(range(1024)) - 500
 
     result = curve_fit(fit, x_points, np.abs(second_coherence))
 
@@ -149,7 +202,7 @@ def plot_smeared_second_coherence():
     plt.show()
 
 
-def plot_intensity_histogram(number_of_fields=10 ** 4):
+def plot_intensity_histogram(number_of_fields=10**4):
     suns = [get_field(1024, 40) for _ in range(number_of_fields)]
     histogram = plt.hist(
         list(itertools.chain.from_iterable([sun.intensity for sun in suns])),
@@ -201,7 +254,7 @@ def plot_fwhm_from_file():
 
 
 def main():
-    plot_intensity_histogram()
+    plot_numeric_second_coherence(experiment_type=ExperimentType.DOPPLER)
 
 
 if __name__ == "__main__":
